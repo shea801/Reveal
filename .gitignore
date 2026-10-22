@@ -1,0 +1,45 @@
+**/__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+alphavantageapi.txt
+.DS_Store
+Securities/
+Securities_DB/*.db
+Securities_DB/*.db-wal
+Securities_DB/*.db-shm
+All_Tickers_Searched/
+ETF_Securities/
+configuration.py
+loop_template.md
+submissions.zip
+
+# future work
+backtest_results/
+
+# learning/notes files
+CI_CD_Testing_Lessons.md
+Junie_writes_me_a_career_path.md
+
+# Local IDE configuration
+.idea/
+
+# Project snapshots and exports
+snapshot_Investment_Project*/
+
+# Environment files and credentials
+.env
+.env.*
+!.env.example
+
+# SQLite databases anywhere in the repository
+*.db
+*.db-wal
+*.db-shm
+
+# Local operating-system artifacts
+Thumbs.db

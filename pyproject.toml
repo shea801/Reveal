@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools==84.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "investment-analysis-platform"
+version = "1.0.0"
+description = "Reveal financial analysis application and data workflow"
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+dependencies = [
+    "dash==4.4.1",
+    "dash-bootstrap-components==2.0.4",
+    "numpy==2.4.2",
+    "pandas==3.0.1",
+    "plotly==7.1.0",
+    "requests==2.33.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.0.2",
+    "ruff==0.15.17",
+]
+notebooks = [
+    "ipykernel>=7,<8",
+    "ipytest>=0.14,<1",
+    "jupyterlab>=4,<5",
+]
+
+[project.scripts]
+investment-analyze = "scripts.analyze_security:main"
+investment-build-magic-formula = "scripts.build_magic_formula_database:main"
+investment-prepare-backtest = "scripts.prepare_backtest_data:main"
+investment-backtest-magic-formula = "scripts.backtest_magic_formula:main"
+investment-update-securities = "maintenance.security_updater:main"
+investment-backfill-adjusted-prices = "scripts.backfill_adjusted_prices:main"
+investment-dashboard = "dashboard.launcher:main"
+investment-database-package = "Securities_DB.package_databases:main"
+
+[tool.setuptools]
+py-modules = ["minimum_viable_product"]
+
+[tool.setuptools.package-data]
+dashboard = ["assets/*.css"]
+Securities_DB = ["reveal_starter_data.zip"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "analytics*",
+    "dashboard*",
+    "data_access*",
+    "data_ingestion*",
+    "maintenance*",
+    "mvp*",
+    "runtime_config*",
+    "scripts*",
+    "Securities_DB*",
+]
+exclude = ["Tests*", "notebooks*", "snapshot_Investment_Project*"]
+namespaces = true
+
+[tool.ruff]
+line-length = 79
+extend-exclude = [
+    "notebooks",
+    "snapshot_Investment_Project",
+    "analytics/MovingAverages.py",
+    "analytics/VolumeVolatilityPrice.py",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/update_securities.py" = ["E402"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["Tests"]
