@@ -362,50 +362,89 @@ by the application.
 
 ### Starter databases for a fresh checkout
 
-The full local investment database is several GB and is intentionally ignored
-by Git. `investment-database-package` can build a small SQLite starter archive
-for an explicitly chosen set of securities. Select securities with enough
-annual and market history for eligibility and enough peers for comparison.
-It copies the existing schema, financial and price history, SEC matches, and
-matching rank rows. The exporter reads the source databases without modifying
-them and rejects an archive over 95 MiB. Review the selected securities, data
-redistribution rights, and archive
-contents before adding `Securities_DB/reveal_starter_data.zip` to a release.
+Reveal's full investment database is several GB and is intentionally
+excluded from the public repository and Python package.
 
-Release preparation, using an existing populated data root:
+A smaller demonstration dataset is distributed separately as a ZIP
+asset attached to the GitHub v1.0.0 Release.
 
-``` bash
-investment-database-package export --ticker TICKER1 --ticker TICKER2
+The starter archive contains historical financial statements, market
+prices, SEC filing metadata, and calculated ranking results for
+12 selected securities:
+
+AAPL, AMZN, CAT, GOOGL, HD, JNJ, JPM, KO, MSFT, NEE, PG, and XOM.
+
+#### Install the starter database
+
+Download `Reveal_starter_v1.0.0.zip` from the v1.0.0 GitHub Release.
+
+Create an empty directory for Reveal's data:
+
+```bash
+mkdir -p "$HOME/reveal-data"
 ```
 
-After the reviewed archive is included in the GitHub repository or wheel, a
-new user can install it into an empty data root before the first dashboard run:
+Install the downloaded archive:
 
-``` bash
-mkdir -p "$HOME/reveal-data"
+```bash
+investment-database-package install \
+  --bundle "$HOME/Downloads/Reveal_starter_v1.0.0.zip" \
+  --data-root "$HOME/reveal-data"
+```
+
+Adjust the archive path if your browser saved the ZIP elsewhere.
+
+The installer creates the following directory structure:
+
+```text
+reveal-data/
+└── Securities_DB/
+    ├── investment.db
+    └── magic_formula_results.db
+```
+
+Configure Reveal to use the installed databases:
+
+```bash
 export REVEAL_DATA_ROOT="$HOME/reveal-data"
-investment-database-package install
+```
+
+Launch the dashboard:
+
+```bash
 investment-dashboard
 ```
 
-To install a starter archive from a specific location:
+Alternatively, analyze an included security from the command line:
 
-``` bash
-investment-database-package install \
-  --bundle /absolute/path/to/reveal_starter.zip \
-  --data-root /absolute/path/to/reveal-data
+```bash
+investment-analyze AAPL --format json
 ```
 
-The installer validates the archive before installation and refuses
-to overwrite existing databases.
+#### Data availability and limitations
 
-No Alpha Vantage key or download is needed to analyze starter securities with
-sufficient included history. Peer comparisons and historical rankings reflect
-only the selected subset. The installer verifies checksums and SQLite
-integrity, and will never replace an existing database. The current source
-checkout has no reviewed starter archive yet; its export is a release
-preparation step. Analyses of
-securities outside the starter selection still need a populated data root.
+The starter database is a historical demonstration snapshot, not a
+live market-data feed. Its financial statements, market prices, and
+company information may be outdated.
+
+Analyses and peer comparisons are limited to the securities and
+historical observations included in the archive.
+
+An Alpha Vantage API key is not required to analyze securities using
+the installed starter database. Live ingestion and refresh operations
+require the `ALPHAVANTAGE_API_KEY` environment variable.
+
+The installer validates archive checksums and SQLite integrity before
+installation. It refuses to overwrite existing databases.
+
+#### Creating custom starter archives
+
+Developers with existing populated databases can create their own
+starter archives using `investment-database-package export` and
+explicitly selected ticker symbols.
+
+Review the selected data, archive contents, and applicable
+redistribution rights before distributing an exported archive.
 
 ### 2. Run the automated tests
 
