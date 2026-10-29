@@ -17,11 +17,11 @@ recommendation.
 
 ## Project Status
 
-**Reveal v1 feature freeze — release preparation in progress.**
+**Reveal v1 feature freeze — release.**
 
 The core ingestion, persistence, data-access, analytics, point-in-time
 metadata, Magic Formula ranking, backtesting, CLI, and automated-test
-infrastructure are substantially implemented. Package version `0.6.3` includes
+infrastructure are substantially implemented. Package version `1.0.0` includes
 a single-security Dash interface over the application contract, with selectable
 current peer distributions for seven core Financial Profile metrics and ten
 additional descriptive overview metrics, plus compact percentile spreads
@@ -30,11 +30,8 @@ presentation-ready comparison-cohort membership from inexpensive persisted
 company metadata, plus availability-aware annual history for the selected
 security and one requested peer. Security entry accepts a ticker, SEC-indexed
 company name, or CIK, and a separate menu lists the latest persisted Magic
-Formula ranking by rank, ticker, and company name. Historical cohort percentile
-distributions remain outside this v1 slice. Representative dashboard, security
-selection, peer, and annual-history validation is complete. The feature freeze
-does not constitute a `v1.0.0` release: CI, clean release verification, and
-public documentation/demo artifacts remain open.
+Formula ranking by rank, ticker, and company name. CI, clean release verification, and
+public documentation/demo artifacts were completed and included in `1.0.0`.
 
 ## Why I Built This
 
@@ -258,7 +255,7 @@ The repository currently supports:
 ## Repository Structure
 
 ``` text
-Investment/
+Reveal/
 ├── data_ingestion/              # External API ingestion and security discovery
 ├── data_access/                 # Database-backed financial and market-data access
 ├── analytics/                   # Financial calculations and analytical methods
@@ -316,8 +313,8 @@ Python 3.11 through 3.14 is supported.
 ### 1. Clone and set up the project
 
 ``` bash
-git clone https://github.com/shea801/Investment.git
-cd Investment
+git clone https://github.com/shea801/Reveal.git
+cd Reveal
 python scripts/setup_project.py
 ```
 
@@ -515,18 +512,15 @@ Product behavior and analytical policy are documented in
 
 ## v1.0 Completion Target
 
-Reveal v1.0 is complete when a user can select an eligible common stock
-and receive a coherent, explainable analysis through a usable interface
-backed by the existing data and analytical infrastructure, with
-reproducible installation and automated validation.
+Reveal v1.0 is complete.
+The v1 feature set is frozen. The following additions were completed to satisfy
+the 'Definition of Done' criteria for a `v1.0.0` release:
 
-The v1 feature set is frozen. The remaining critical path is:
-
-1. Add CI for the sanitized test and supported setup path.
-2. Verify a clean install, tests, and dashboard/CLI launch from a release
+1. Added CI for the sanitized test and supported setup path.
+2. Verified a clean install, tests, and dashboard/CLI launch from a release
    candidate checkout.
-3. Complete public documentation and capture representative demo artifacts.
-4. Tag `v1.0.0` only after those release gates pass.
+3. Completed public documentation and capture representative demo artifacts.
+4. Tagged `v1.0.0` and uploaded to the Reveal GitHub repository.
 
 ## Post-v1 Ideas
 
