@@ -33,7 +33,7 @@ def _application_version() -> str:
     try:
         return version("investment-analysis-platform")
     except PackageNotFoundError:
-        return "0.6.3"
+        return "1.0.0"
 
 
 @dataclass(frozen=True)
