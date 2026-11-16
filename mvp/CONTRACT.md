@@ -8,11 +8,11 @@ builds these results and contract-shaped dictionaries.
 
 ## Status
 
-Version: 0.6.3 - Reveal availability-aware historical comparison.
+Version: 1.0.0 - Reveal application output contract.
 
 Status: frozen for the Reveal v1 baseline unless a test-backed change updates
-this file. Dashboard and export work should treat this contract as the source
-of truth.
+this file. Dashboard and CLI work should treat this contract as the source of
+truth; CSV export is deferred.
 
 ## Purpose
 
@@ -77,9 +77,11 @@ this contract.
 Interactive entry points evaluate eligibility before running the analytical
 service. Reveal v1 accepts a common stock listed on a supported major U.S.
 exchange when local data reports at least $250 million in market capitalization
-and five years of annual financial and market-price history. Ineligible results
-retain the security identity and every failed requirement so the presentation
-layer can explain the decision without calling the analytics pipeline.
+and at least five distinct annual fiscal dates spanning four years for each
+required statement source, plus a four-year market-price date span. This
+preflight does not establish that every intervening fiscal year is present.
+Ineligible results retain the security identity and every failed requirement
+so the presentation layer can explain the decision without calling analytics.
 
 ## Required Identity Fields
 
@@ -369,17 +371,20 @@ treated as a fully comparable result without reading `missing_fields` and
 
 ## Date Semantics
 
-`analysis_date` is the requested information cutoff and remains the date passed
-to the analysis workflow. When prior history exists, annual and quarterly
-statement lookup uses the latest fiscal period on or before that date. TTM
+`analysis_date` is the requested analysis cutoff and remains the date passed
+to the analysis workflow. Ordinary single-security analysis selects annual
+and quarterly statements by the latest fiscal period on or before that date;
+it does not require a matched SEC filing to have been public by that date.
+The historical comparison below and strict backtesting apply their own
+filing-availability checks. When prior history exists, TTM
 calculations use the latest four complete quarterly periods on or before the
 same cutoff.
 
 The seven Financial Profile metrics use the latest completed common annual
 period on or before the cutoff. ROIC and Financial Profile ROC also require the
-preceding annual balance sheet for their average capital denominators. Five-year
-EPS CAGR requires five annual EPS dates aligned with annual income-statement
-dates and uses the four intervals between them. Missing source values remain
+preceding annual balance sheet for their average capital denominators.
+EPS CAGR (4-Year Growth) requires five annual EPS dates aligned with annual
+income-statement dates and uses the four intervals between them. Missing source values remain
 `None`; zero and negative values remain valid where the formula permits them.
 Net debt/free cash flow is unavailable when free cash flow is zero or negative.
 
@@ -408,9 +413,11 @@ weekends and market holidays without silently selecting a later price.
 risk and asset volatility.
 
 Magic Formula ranking rows also retain the associated annual fiscal date and a
-`financial_statement_availability_date` proxy derived from the latest required
-quarterly earnings `reportedDate`. Future strict backtesting should prefer SEC
-filing timestamps when those become available.
+`financial_statement_availability_date` proxy derived from the latest
+`reportedDate` among the four required quarterly earnings rows and the
+associated annual observation. The strict backtest separately uses matched
+SEC filing availability; the ranking-row proxy is not a verified SEC filing
+timestamp.
 
 The statement selector currently retains a compatibility fallback to the
 earliest available fiscal period when `analysis_date` predates all statement

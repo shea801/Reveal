@@ -1,13 +1,11 @@
 Project: Reveal
-Version: v0.6.3 availability-aware annual comparison
+Version: v1.0.0
 Start date: 9/23/2026
-Current work date: 10/09/2026
 
 # SELECTION POLICY
 
-This file will describe the selection policy for the application.
-This application lies within the 'Investment' project domain, and the current application working title is 'Reveal'
-This file will define:
+This file describes Reveal's implemented selection policy and explicitly
+labels post-v1 ideas. It covers:
 - Eligible Securities
 - Financial Profile analysis
 - Defensive criteria
@@ -32,7 +30,9 @@ is not a purchase recommendation:
 - No bonds
 - No US Treasuries
 - Securities must have a minimum market capitalization of $250 million (Small market cap group).
-- Securities must have a minimum of 5 consecutive years of financial data available.
+- Each required annual statement source must have at least five distinct
+  fiscal dates spanning four years; market-price dates must span four years.
+  The preflight does not check every intervening fiscal year for gaps.
 - The 'Defensive' and 'Enterprising' investor types will have other limiting financial factors which will exclude certain securities from consideration.
 
 
@@ -72,8 +72,11 @@ flow); and interest coverage (annual EBIT / annual interest expense).
 
 Current cross-sectional distributions cover all 17 descriptive fields. Annual
 selected-security/one-peer history covers the seven frozen core metrics. Those
-metrics use latest completed annual data available at the analysis cutoff;
-EOEY also uses a point-in-time market-capitalization input. Magic Formula ROC,
+metrics use the latest completed annual fiscal period on or before the analysis
+date for ordinary single-security analysis; that path does not check whether
+the SEC filing was already public at the cutoff. Availability-aware annual
+history and strict backtesting apply separate filing-date checks. EOEY also
+uses a point-in-time market-capitalization input. Magic Formula ROC,
 earnings yield, and overall rank belong to a separate methodology. Its ROC
 uses TTM EBIT and a quarter-aware capital base for ordinal ranking, while
 Financial Profile ROC describes annual operating efficiency. Both must be
@@ -128,7 +131,7 @@ Post-v1 historical peer-cohort distributions, if developed, should use robust
 statistics such as median and percentiles rather than relying solely on
 arithmetic means.
 
-Reveal v0.6.3 implements cross-sectional metric values at the requested cutoff
+Reveal v1.0.0 implements cross-sectional metric values at the requested cutoff
 using the latest locally stored company classification and eligibility metadata
 for cohort membership. This is not a strict historical universe. Annual
 selected-security/one-peer history is implemented for the seven frozen metrics.
@@ -204,21 +207,15 @@ The analysis for each metric shall have the following format for the user:
 4. Uninterrupted common-stock dividend payments for each of the past 20 fiscal
    years, evaluated from fully covered adjusted daily dividend-event history.
    A covered year with no payment fails; incomplete history is unavailable.
-5. A minimum increase of at least 1/3 EPS in the past 10 years, using 3 year EPS average for the current EPS, and the average EPS ov year 10, 11, and 12
-6. Current share price should not be greater than 15x EPS - considered a moderate price to earnings ratio
-    - The number 15 is a general rule, but it is derived from the current AA Corporate Bond rate (Graham used 7.5% which gave 13.3)
-    - To determine the appropriate multiple, we can use the current AA Corporate Bond rate as a benchmark:
-      - 100 / AA Corporate Bond Rate = multiplier 
-      - Example: (100 / 6.66667) = 15
-7. Current share price should not be greater than 1.5x Book Value.
-    - The price to book value can be proportionately higher to the P/E ratio if it is lower than the general rule of 15
-8. Intrinsic Value:
-   - Graham Number = (15 * 1.5 * EPS * BVPS)**.5
-     - BVPS = Book Value per Share
-   - Again, 15 is derivative. Obtain the multiplier, divide it by 15, and multiply that by the Graham Number to adjust for P/E
-   - Example: (100 / AA Corporate Bond Rate) / 15 = intrinsic_multiplier
-   - Graham Number * intrinsic_multiplier = adjusted_Graham_Number
-9. Margin of Safety = Graham Number (or adjusted_Graham_Number if available) / Current Share Price
+5. A minimum one-third EPS increase over the past 10 years, comparing the
+   latest three-year average with the average from the start of the lookback.
+6. Current share price should not be greater than 15x EPS. Reveal v1 uses
+   a fixed threshold; it does not look up an AA corporate bond rate.
+7. Current share price should not be greater than 1.5x book value. Reveal v1
+   uses this fixed threshold without a P/E trade-off adjustment.
+8. Intrinsic Value: Graham Number = (15 * 1.5 * EPS * BVPS)**.5,
+   where BVPS is book value per share. No bond-rate adjustment is applied.
+9. Margin of Safety = Graham Number / Current Share Price.
 
 
 
@@ -237,14 +234,13 @@ The analysis for each metric shall have the following format for the user:
 4. Dividend record: some current dividend.
 5. Earnings growth:last years earnings more than those of 5 years ago.
 6. Current share price is not more than 120% net tangible assets.
-7. Intrinsic Value:
-   - Serenity Number  = (10 * 1.2 * EPS * TBVPS)**.5 
-   - TBVPS = Tangible Book Value per Share
-   - As with Defensive Investor, 10 is a default multiplier to EPS
-   - An intrinsic multiplier is used to adjust for P/E if the current AA corporate bond rate is known/available.
-   - intrinsic_multiplier = (100 / AA Corporate Bond Rate) / 10
-   - Serenity Number * intrinsic_multiplier = adjusted_Serenity_Number
-8. Margin of Safety = Serenity_Number (or adjusted_Serenity_Number if available) / Current Share Price
+7. Intrinsic Value: Serenity Number = (10 * 1.2 * EPS * TBVPS)**.5,
+   where TBVPS is tangible book value per share. No bond-rate adjustment is
+   applied.
+8. Margin of Safety = Serenity Number / Current Share Price.
+
+Adjusting Graham valuation multiples using a current AA corporate bond rate
+is a post-v1 research idea, not an implemented calculation.
 
 
 #### Magic Formula Ranking:

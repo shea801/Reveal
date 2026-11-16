@@ -120,9 +120,11 @@ without becoming the application’s presentation layer.
 `Securities_DB/package_databases.py` exports an explicitly selected, compact
 starter archive from existing SQLite data. It carries the needed source tables,
 SEC match metadata, and the rank-only Magic Formula database for those tickers.
-The install command verifies the archive and fills an empty data root before
-the application starts. Full local databases remain outside Git; the starter
-archive is added to a release only after its contents and rights are reviewed.
+The install command stages and validates both databases, including checksums,
+SQLite integrity, and foreign-key references, before installing either one.
+It refuses to overwrite existing databases and rolls back an incomplete
+installation. Full local databases remain outside Git; the selected starter
+archive is distributed separately as a v1.0.0 release asset.
 
 ## OHLCV Data
 

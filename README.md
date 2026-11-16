@@ -1,6 +1,5 @@
 Project: Reveal
-Version: v0.6.3 availability-aware annual comparison
-Current work date: 10/09/2026
+Version: v1.0.0
 
 # Reveal — Investment Analysis Platform
 
@@ -17,7 +16,7 @@ recommendation.
 
 ## Project Status
 
-**Reveal v1 feature freeze — release.**
+**Reveal v1.0.0 is tagged and feature-frozen.**
 
 The core ingestion, persistence, data-access, analytics, point-in-time
 metadata, Magic Formula ranking, backtesting, CLI, and automated-test
@@ -30,8 +29,9 @@ presentation-ready comparison-cohort membership from inexpensive persisted
 company metadata, plus availability-aware annual history for the selected
 security and one requested peer. Security entry accepts a ticker, SEC-indexed
 company name, or CIK, and a separate menu lists the latest persisted Magic
-Formula ranking by rank, ticker, and company name. CI, clean release verification, and
-public documentation/demo artifacts were completed and included in `1.0.0`.
+Formula ranking by rank, ticker, and company name. The repository includes a
+CI workflow and a local `v1.0.0` tag; the starter data is distributed as a
+separate release asset.
 
 ## Why I Built This
 
@@ -83,8 +83,10 @@ specification documents rather than in this README.
 
 Reveal distinguishes among the requested analysis date, fiscal statement
 periods, actual market-price dates, and SEC filing availability.
-Historical workflows are designed to avoid using financial statements
-before the information was publicly available.
+The annual-history comparison and strict backtesting workflows use SEC filing
+availability to avoid displaying financial statements before their matched
+filings were public. Ordinary single-security analysis selects statements by
+fiscal period, not by SEC filing availability.
 
 ### SEC Filing Availability Layer
 
@@ -187,8 +189,10 @@ distributions cover all 17 fields; selected-security/one-peer annual history
 currently covers the seven frozen metrics. Magic Formula ROC, earnings yield,
 and rank belong to a separate ranking methodology, not this metric set.
 
-The seven frozen metrics use the latest completed annual data available to the
-requested analysis date. ROIC uses annual NOPAT over average invested capital;
+For ordinary single-security analysis, the seven frozen metrics use the latest
+completed annual fiscal period on or before the requested analysis date. This
+does not guarantee the filing was public by that date. ROIC uses annual NOPAT
+over average invested capital;
 Financial Profile ROC uses annual EBIT over average capital employed; FCFM uses
 operating cash flow less capital expenditures divided by revenue; and EOEY uses
 that same cash-flow amount as a documented owner-earnings proxy divided by
@@ -249,7 +253,6 @@ The repository currently supports:
 - Availability-aware annual Financial Profile comparison for the selected
   security and one peer, with dynamic periods, source-date disclosure, limiting
   history warnings, and fiscal-period offset warnings.
-- Jupyter notebooks for exploratory research and development.
 - Automated tests for core application behavior.
 
 ## Repository Structure
@@ -261,18 +264,18 @@ Reveal/
 ├── analytics/                   # Financial calculations and analytical methods
 ├── dashboard/                   # Dash presentation layer and styles
 ├── mvp/                         # Stable application models and service boundary
+├── runtime_config/              # Distributable environment-based path/key interface
 ├── Securities_DB/               # SQLite persistence, migrations, and DB helpers
 ├── maintenance/                 # Recurring update and maintenance workflows
 ├── scripts/                     # CLI entry points and operational commands
 ├── docs/                        # Technical pipeline, SEC, and backtest docs
 ├── Tests/                       # Automated tests
-├── notebooks/                   # Exploratory analysis and development notebooks
-├── Securities/                  # Local company datasets (ignored in git)
-├── ETF_Securities/              # Local ETF datasets (ignored in git)
-├── All_Tickers_Searched/        # Local search datasets (ignored in git)
-├── investing_literature_pdfs/   # Local reference material
-└── look_here_first/             # Project context and architecture documentation
+└── .github/                     # Continuous integration workflow
 ```
+
+An existing data root may additionally contain ignored `Securities/`,
+`ETF_Securities/`, `All_Tickers_Searched/`, and `notebooks/` directories.
+Those are data/maintenance paths, not directories supplied by a fresh clone.
 
 The initial dashboard is implemented in `dashboard/` and launched with
 `investment-dashboard`. It consumes `mvp.service` and does not duplicate
@@ -315,12 +318,17 @@ Python 3.11 through 3.14 is supported.
 ``` bash
 git clone https://github.com/shea801/Reveal.git
 cd Reveal
-python scripts/setup_project.py
+python3 scripts/setup_project.py
+source .venv/bin/activate
 ```
 
 The setup helper creates or reuses `.venv`, installs the project
 dependencies, and validates runtime imports. It does not create a private
 configuration file or move any data.
+Activate the environment before using the installed CLI commands or `pytest`.
+On Windows PowerShell, run the setup helper with
+`py -3 scripts/setup_project.py`, then activate with
+`.venv\Scripts\Activate.ps1` instead.
 
 Set `REVEAL_DATA_ROOT` to the **existing, absolute directory** that contains
 Reveal's persisted data. The directory must exist. For a development checkout
@@ -330,6 +338,10 @@ directory; no files need to be relocated. For example:
 ``` bash
 export REVEAL_DATA_ROOT="/absolute/path/to/existing/data-root"
 ```
+
+Use `export REVEAL_DATA_ROOT="$PWD"` only when the current directory is the
+existing data root (for example, a development checkout that already contains
+`Securities_DB/investment.db`). It does not mean any working directory will do.
 
 PowerShell: `$env:REVEAL_DATA_ROOT = 'C:\path\to\existing\data-root'`.
 Keep this setting in your local shell or environment configuration, not in a
@@ -363,7 +375,7 @@ Reveal's full investment database is several GB and is intentionally
 excluded from the public repository and Python package.
 
 A smaller demonstration dataset is distributed separately as a ZIP
-asset attached to the GitHub v1.0.0 Release.
+asset attached to the GitHub v1.0.0 Release; it is not tracked in Git.
 
 The starter archive contains historical financial statements, market
 prices, SEC filing metadata, and calculated ranking results for
@@ -431,8 +443,9 @@ An Alpha Vantage API key is not required to analyze securities using
 the installed starter database. Live ingestion and refresh operations
 require the `ALPHAVANTAGE_API_KEY` environment variable.
 
-The installer validates archive checksums and SQLite integrity before
-installation. It refuses to overwrite existing databases.
+The installer validates archive checksums, SQLite integrity, and foreign-key
+references before installation. It refuses to overwrite existing databases
+and restores the original destination state if installation fails.
 
 #### Creating custom starter archives
 
@@ -488,9 +501,8 @@ Reveal currently uses:
   timestamps, forms, and accession numbers.
 
 Large local datasets, API credentials, full database files, and downloaded
-source archives are not intended to be committed to the public repository.
-A reviewed, size-limited starter database archive is the sole planned
-exception.
+source archives are not committed to the public repository. The size-limited
+starter archive is distributed separately as a release asset, not in Git.
 
 ## Technical Documentation
 
@@ -510,17 +522,13 @@ Product behavior and analytical policy are documented in
 `scripts/APPLICATION_PRODUCT_SPEC.md`, `scripts/SELECTION_POLICY.md`,
 `scripts/DASHBOARD_SPEC.md`, and `scripts/APPLICATION_BUILDER_GUIDE.md`.
 
-## v1.0 Completion Target
+## Release Status
 
-Reveal v1.0 is complete.
-The v1 feature set is frozen. The following additions were completed to satisfy
-the 'Definition of Done' criteria for a `v1.0.0` release:
-
-1. Added CI for the sanitized test and supported setup path.
-2. Verified a clean install, tests, and dashboard/CLI launch from a release
-   candidate checkout.
-3. Completed public documentation and capture representative demo artifacts.
-4. Tagged `v1.0.0` and uploaded to the Reveal GitHub repository.
+The v1 feature set is frozen. Package metadata and the local Git tag are
+`1.0.0`. CI installs the package, runs the sanitized tests and Ruff, builds a
+distribution, and checks wheel imports. The public starter archive is a
+separate GitHub Release asset. Demo screenshots or recordings are not included
+in this repository.
 
 ## Post-v1 Ideas
 
@@ -544,6 +552,12 @@ These items are intentionally outside the v1.0 critical path.
   later restatements may therefore affect historical financial values
   even when SEC metadata controls information timing.
 - Historical ticker/CIK identity is not complete for every security.
+- Ordinary single-security analysis selects fiscal statement periods on or
+  before the requested date; unlike historical comparison and strict
+  backtesting, it does not gate each statement on SEC filing availability.
+- Eligibility requires five distinct annual statement dates spanning at least
+  four years per required statement type; the preflight does not verify every
+  intervening fiscal year is present.
 - Historical-universe analysis may contain survivorship bias.
 - Source providers may omit or shorten adjusted-price history for
   individual securities.

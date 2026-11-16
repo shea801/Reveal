@@ -1,10 +1,10 @@
 # APPLICATION BUILDER CONTRACT
 
-This contract is to outline will direct the development of the application builder. It is an updatable contract
-which will occur as the application grows and evolves.
+This guide describes Reveal's application-builder boundaries and may evolve
+after v1.
 
 THIS APPLICATION BUILDER CONTRACT IS HIERARCHICALLY UNDER `mvp/CONTRACT.md` AND ADHERES TO GUIDELINES AND STRUCTURE AS
-INDICATED IN THE PROJECT 'README.md' AND THOSE FILES LOCATED IN 'look_here_first' DIRECTORY.
+INDICATED IN THE PROJECT `README.md` AND THE ACTIVE SPECS IN `scripts/`.
 
 
 ## Scope
@@ -19,9 +19,9 @@ creation.
 No analytical metric, ranking rule, threshold, or selection rule may be added solely because the value is available. Every displayed or ranked parameter must answer a defined user decision question.
 
 
-## APPLICATION: "Reveal Investment Program"
+## APPLICATION: Reveal
 
-- The applications working name will be "Reveal Investment Program"
+The released application name is Reveal.
 
 
 ## MISSION STATEMENT
@@ -36,7 +36,7 @@ methodologies to help users investigate eligible common stocks. It gives
 supporting context, cautions, and missing-data explanations, not a buy/sell
 verdict. ETF-specific analysis remains a possible post-v1 extension.
 
-A secondary aspect of the application will be to provide a 'magic formula' ranking system as described by Joel Greenblatt in 
+A secondary aspect of the application provides a 'magic formula' ranking system as described by Joel Greenblatt in
 "The Little Book that 'Still' Beats the Market", as best implemented programmatically within this application.
 
 Magic Formula ranking is a separate established-methodology lens, not a
@@ -57,7 +57,9 @@ compile the values needed for security evaluation.
   - Reveal v1 analyzes eligible common stocks; ETF-specific analysis is post-v1.
 - If a security fails eligibility, the user is told which requirement failed.
 - The criteria will be based on the criteria as developed in the application 
-  - companies with at least 5 consecutive years of financial data available
+  - five distinct annual fiscal dates spanning four years per required
+    statement source, plus a four-year market-price date span; the preflight
+    does not verify every intervening fiscal year
   - no 'Nano' market cap group companies
   - no Warrants or Convertible Securities
   - no Preferred Stocks

@@ -1,7 +1,6 @@
 Project: Reveal
-Version: v0.6.3 availability-aware annual comparison
+Version: v1.0.0
 Start date: 9/23/2026
-Current work date: 10/09/2026
 
 This spec will be the authority on application presentation behavior.
 
@@ -13,24 +12,22 @@ Refer to `../scripts/SELECTION_POLICY.md` for security selection criteria and pr
 
 # DASHBOARD SPEC
 
-This file will describe the dashboard design for the application.
-This application lies within the 'Investment' project domain, and the current application working title is 'Reveal'
-This file will define:
-- Landing page
-- Search
-- Candidate lists
-- Security detail view
-- charts
-- interactions
+This file describes Reveal's implemented single-page dashboard: security
+search, ranked selection, analysis detail, charts, and interactions. It does
+not define a separate landing page.
 
 
 ### CURRENT DEVELOPMENT STAGE
+**v1.0.0 release:** The single-page dashboard is feature-frozen. The
+repository contains CI and a v1.0.0 tag; starter data is a separate release
+asset. Historical peer-cohort distributions and ETF analysis remain post-v1.
+
+### IMPLEMENTATION HISTORY
 **2026-10-09**: Reveal v1 dashboard functionality is feature-frozen after
 representative security, peer, and annual-history validation. Current
 cross-sectional distributions cover seven frozen Financial Profile metrics
 and ten additional descriptive overview fields; historical selected/one-peer
-comparison covers the seven frozen metrics. CI, clean release verification,
-public documentation/demo artifacts, and a release tag remain outstanding.
+comparison covers the seven frozen metrics. This was a pre-release milestone.
 **2026-10-05**: Added ticker, SEC company-name, and CIK search with suggestions
 from persisted SEC metadata. Added a searchable selector for the latest
 persisted Magic Formula quarter, ordered by rank and showing rank, ticker, and
@@ -46,8 +43,8 @@ asterisks, selected-only fallback, offset warnings, and the chart-only warning
 border are active.
 **2026-10-01**: Added an application-service contract that exposes the
 securities belonging to any current comparison cohort from persisted company
-metadata. Dashboard rendering of this list remains a separate presentation
-step; retrieving membership does not run full analyses for cohort members.
+metadata. Dashboard rendering was added later; retrieving membership does not
+run full analyses for cohort members.
 **2026-09-28**: Replaced the Financial Profile table's descriptive-text column
 with a compact one-dimensional peer-distribution spread. Each row shows fixed
 percentile ticks at 0, 10, 25, median, 75, 90, and 100, plus a marker at the
@@ -83,7 +80,7 @@ SecurityAnalysisResult
 Dashboard renders
       │
       ├── Security / Analysis Overview
-      ├── Financial Profile
+      ├── Descriptive Annual Metrics
       ├── Peer Comparison and Distribution table + graph
       ├── Graham Analysis
       ├── Magic Formula
@@ -106,7 +103,6 @@ For securities that are ineligible for analysis as described in
   - Explanations should be concise and specific to the criteria that failed:
     - "'TICKER' is ineligible for analysis because 'TICKER' is a Warrant (or Preferred Stock, ETF, etc.), and not a Common Stock"
     - "'TICKER' is ineligible for analysis because it does not have enough financial data to complete analysis."
-    - "'TICKER' is ineligible for analysis because 'TICKER' only has 3 years of financial data available, and a minimum of 5 is required for analysis."
     - "'TICKER' is ineligible for analysis because it does not meet the minimum market capitalization of $250 million US."
   - Following that explanation an explanation *why*:
   > "Reveal v1 requires an investment to be a common stock because the current analytical contract is designed for operating-company financial statements. Learn more about 'OTHER SECURITY TYPE' at the linked Investopedia overview."
@@ -253,11 +249,7 @@ The current layout presents:
 - Side-by-side comparison of other security within the cohort group
 - Availability-aware annual selected/peer Financial Profile comparison
 
-### Next Action
+### Post-v1 Work
 
-1. Add CI for the sanitized test and supported setup path.
-2. Verify clean installation, tests, CLI, and dashboard launch from a release
-   candidate checkout.
-3. Complete public documentation and desktop/mobile demo artifacts.
-4. Tag `v1.0.0` after the release gates pass; the feature freeze is not the
-   release itself.
+Historical peer-cohort distributions, ETF-specific analysis, and broader
+historical validation are future work, not current dashboard features.

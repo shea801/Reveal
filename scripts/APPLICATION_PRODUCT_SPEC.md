@@ -1,7 +1,6 @@
 Project: Reveal
-Version: v0.6.3 availability-aware annual comparison
+Version: v1.0.0
 Start date: 9/23/2026
-Current work date: 10/09/2026
 
 # APPLICATION PRODUCT SPEC
 
@@ -10,15 +9,13 @@ Current work date: 10/09/2026
 A selected SQLite starter archive can be prepared with
 `investment-database-package export` and installed into a fresh data root
 with `investment-database-package install`. This lets the included securities
-be analyzed before an Alpha Vantage download. The archive still requires
-content and redistribution review before it is added to a public release;
-the current repository does not contain one. The full local databases remain
-outside Git. See `README.md` for the commands and `docs/DATA_PIPELINE.md`
+be analyzed before an Alpha Vantage download. A starter archive is distributed
+as a separate v1.0.0 GitHub Release asset; it is not tracked in this repository.
+The full local databases remain outside Git. See `README.md` for the commands
+and `docs/DATA_PIPELINE.md`
 for the persistence boundary.
 
-This file will describe the scope and purpose of the application.
-This application lies within the 'Investment' project domain, and the current application working title is 'Reveal'
-This file will tell:
+This file describes the scope and purpose of Reveal. It covers:
 - Who Reveal is for
 - What problem it solves
 - General User workflow
@@ -30,7 +27,7 @@ This document outlines and directs the development of the application builder. I
 which will occur as the application grows and evolves.
 
 THIS APPLICATION_PRODUCT_SPEC.md IS HIERARCHICALLY UNDER `mvp/CONTRACT.md` AND ADHERES TO GUIDELINES AND STRUCTURE AS
-INDICATED IN THE PROJECT 'README.md' AND THOSE FILES LOCATED IN 'look_here_first' DIRECTORY.
+INDICATED IN THE PROJECT `README.md` AND THE ACTIVE SPECS IN `scripts/`.
 
 
 ## Scope
@@ -48,7 +45,7 @@ Every displayed or ranked parameter must answer a defined user decision question
 
 ## APPLICATION: "Reveal"
 
-- The applications working name is "Reveal"
+- The released application name is "Reveal".
 
 
 ## MISSION STATEMENT
@@ -99,7 +96,9 @@ compile the values needed for security evaluation.
 - The analytical criteria will be based on the financial metrics as developed in the application
 - There will be guardrails applied to securities so the user will know WHY a security, which is listed as US 
   tradeable security, does not meet the criteria:
-  - companies must have at least 5 consecutive years of financial data available
+  - the v1 preflight checks five distinct annual fiscal dates spanning four
+    years for each required statement source, plus a four-year price-date
+    span; it does not verify every intervening year is present
   - no 'Nano' market cap group companies
   - no Warrants or Convertible Securities
   - no Preferred Stocks

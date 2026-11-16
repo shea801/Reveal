@@ -247,8 +247,8 @@ workflows that modify local state.
 
 ## Research Boundary
 
-Backtesting is not on the critical path for Reveal v1.0 beyond
-maintaining a working, documented implementation.
+Reveal v1.0.0 includes a working, documented backtesting workflow, but broad
+historical efficacy research is outside the released dashboard scope.
 
 Additional strategy optimization, machine-learning weighting, and broad
 historical efficacy research belong in future research work unless they
