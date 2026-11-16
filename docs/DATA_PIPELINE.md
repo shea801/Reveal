@@ -100,6 +100,40 @@ Its responsibilities include:
 
 Ingestion should not contain investment-selection policy.
 
+### First Alpha Vantage download
+
+Set `REVEAL_DATA_ROOT` to an existing absolute data directory containing the
+SEC `company_tickers.json` registry, and set `ALPHAVANTAGE_API_KEY` in the
+environment. From the project root, run:
+
+```bash
+python -m data_ingestion.DataExtraction AAPL SPY
+# Omit tickers to process every symbol in company_tickers.json:
+python -m data_ingestion.DataExtraction
+```
+
+The installed command is `investment-initial-load`. Use `--limit 10` for a
+small initial batch and `--requests-per-minute 5` to set the request pace
+(five per minute is the default). The command stops when Alpha Vantage reports
+a rate limit; rerun it later to continue. It preserves valid local files and
+retries only missing or invalid datasets.
+
+For exact symbol matches classified as Equity, it downloads the company
+overview, full daily adjusted prices, and annual and quarterly balance sheets,
+cash flows, income statements, and earnings. For ETFs, it downloads the ETF
+profile and full daily adjusted prices. It creates the expected
+`All_Tickers_Searched/`, `Securities/<ticker>__<SEC title>/`, and
+`ETF_Securities/<ticker>__<SEC title>/` paths. Unavailable responses are
+reported and never written as source data. Alpha Vantage account limits and
+endpoint entitlements determine which datasets are available.
+
+After the source files are present, `python -m Securities_DB.create_database`
+creates and populates `Securities_DB/investment.db` from the local files.
+`investment-build-magic-formula --execute` builds the separate ranking database
+from the populated investment database. SEC filing metadata comes from the
+separate SEC bulk archive workflow described in `SEC_POINT_IN_TIME.md`; the
+Alpha Vantage download does not fetch it.
+
 ## Persistence Layer
 
 `Securities_DB/` owns SQLite persistence and schema-related behavior.

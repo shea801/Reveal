@@ -170,7 +170,7 @@ def test_incompatible_legacy_schema_requires_explicit_rebuild():
 def test_refresh_magic_formula_symbols_writes_table_and_backup(tmp_path):
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
-    backup_path = tmp_path / "magic_formula_ranked_securities.csv"
+    backup_path = tmp_path / "magic_formula_tickers.csv"
     calls = []
 
     def fake_eligible_tickers_fn(ticker_list=None):
@@ -330,7 +330,7 @@ def test_eligible_batches_allow_quarters_after_latest_annual_period():
 def test_build_database_stores_rank_rows_and_ordered_view(tmp_path):
     investment_conn = _investment_connection()
     db_path = tmp_path / "magic_formula_results.db"
-    backup_path = tmp_path / "magic_formula_ranked_securities.csv"
+    backup_path = tmp_path / "magic_formula_tickers.csv"
 
     def fake_eligible_tickers_fn(ticker_list=None):
         assert ticker_list is None
@@ -506,7 +506,7 @@ def test_atomic_rebuild_replaces_legacy_database_only_after_validation(tmp_path)
 
     summary = mf_db.rebuild_magic_formula_results_database(
         db_path=db_path,
-        backup_path=tmp_path / "magic_formula_ranked_securities.csv",
+        backup_path=tmp_path / "magic_formula_tickers.csv",
         analysis_dates=["2024-03-31"],
         investment_conn=investment_conn,
         eligible_tickers_fn=lambda ticker_list=None: ["AAA"],

@@ -20,7 +20,7 @@ from runtime_config import get_data_root, magic_formula_db_path
 from Securities_DB.db_connection import get_connection
 
 
-MAGIC_FORMULA_TICKERS_BACKUP = "magic_formula_ranked_securities.csv"
+MAGIC_FORMULA_TICKERS_BACKUP = "magic_formula_tickers.csv"
 RESULT_TABLE = "magic_formula_quarterly_results"
 ORDERED_VIEW = "magic_formula_rankings_ordered"
 ANNUAL_SOURCE_TABLES = frozenset({

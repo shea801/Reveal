@@ -5,9 +5,15 @@ import os
 import json
 import math
 import datetime as dt
+import argparse
+import re
+import tempfile
+import time
+from pathlib import Path
 from data_access.file_parsing import load_json_from_file_safe
 from data_access.CompanyDetails import CompanyDetails as CD
 from data_ingestion.alphavantage_api import make_alphavantage_api_call
+from runtime_config import get_alphavantage_api_key, get_data_root
 
 
 _SEARCH_RESULT_KEY_MAP = {
@@ -533,3 +539,278 @@ class DataExtraction:
         update_market_capitalization_for_ticker(self.ticker)
 
         return None
+
+
+_VALID_TICKER = re.compile(r"[A-Z0-9][A-Z0-9.-]*\Z")
+_FINANCIAL_RESPONSE_KEYS = {
+    "balance": ("annualReports", "quarterlyReports"),
+    "cash": ("annualReports", "quarterlyReports"),
+    "income": ("annualReports", "quarterlyReports"),
+    "earnings": ("annualEarnings", "quarterlyEarnings"),
+}
+_ADJUSTED_PRICE_KEYS = {
+    "1. open", "2. high", "3. low", "4. close",
+    "5. adjusted close", "6. volume", "7. dividend amount",
+    "8. split coefficient",
+}
+
+
+class AlphaVantageRateLimit(RuntimeError):
+    """The provider has asked us to stop making requests for now."""
+
+
+class _PacedAlphaVantage:
+    def __init__(self, requests_per_minute: int):
+        if requests_per_minute < 1:
+            raise ValueError("requests_per_minute must be positive")
+        self.interval = 60 / requests_per_minute
+        self.last_request: float | None = None
+
+    def call(self, ticker: str, key: str) -> dict | None:
+        if self.last_request is not None:
+            remaining = self.interval - (time.monotonic() - self.last_request)
+            if remaining > 0:
+                time.sleep(remaining)
+        self.last_request = time.monotonic()
+        payload = make_alphavantage_api_call(ticker, key)
+        if not isinstance(payload, dict):
+            return None
+        message = next(
+            (payload[name] for name in ("Note", "Information", "Error Message") if name in payload),
+            None,
+        )
+        if message is not None:
+            message = str(message)
+            if any(phrase in message.lower() for phrase in (
+                "rate limit", "calls per minute", "requests per minute",
+                "requests per day", "call frequency", "api call frequency",
+            )):
+                raise AlphaVantageRateLimit(message)
+            print(f"{ticker} {key}: Alpha Vantage returned {message}")
+            return None
+        return payload
+
+
+def _saved_json(path: str | Path | None, valid) -> bool:
+    if not path:
+        return False
+    return bool(valid(load_json_from_file_safe(str(path), verbose=False)))
+
+
+def _write_json(path: str | Path, payload: object) -> None:
+    """Write a complete JSON document, replacing an invalid or empty file safely."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=path.parent, prefix=f".{path.name}.",
+            suffix=".tmp", delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            json.dump(payload, handle)
+            handle.write("\n")
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def _exact_search_match(payload: dict | None, ticker: str) -> dict | None:
+    matches = payload.get("bestMatches") if payload else None
+    if not isinstance(matches, list):
+        return None
+    return next((
+        match for match in matches
+        if isinstance(match, dict)
+        and str(match.get("1. symbol", "")).upper() == ticker
+        and match.get("3. type") in ("Equity", "ETF")
+    ), None)
+
+
+def _valid_search(data: object, ticker: str) -> bool:
+    return (isinstance(data, dict)
+            and data.get("1. symbol") == ticker
+            and data.get("3. type") in ("Equity", "ETF"))
+
+
+def _valid_overview(data: object, ticker: str) -> bool:
+    return (isinstance(data, dict) and data.get("Symbol") == ticker
+            and bool(data.get("Name")))
+
+
+def _valid_prices(data: object) -> bool:
+    if not isinstance(data, dict) or not data:
+        return False
+    sample = next(iter(data.values()))
+    return isinstance(sample, dict) and _ADJUSTED_PRICE_KEYS.issubset(sample)
+
+
+def _valid_reports(data: object) -> bool:
+    return (isinstance(data, list) and bool(data)
+            and all(isinstance(row, dict) and row.get("fiscalDateEnding") for row in data))
+
+
+def _valid_etf(data: object) -> bool:
+    return isinstance(data, dict) and bool(data) and not any(
+        key in data for key in ("Note", "Information", "Error Message")
+    )
+
+
+def _valid_etf_for_ticker(data: object, ticker: str) -> bool:
+    return _valid_etf(data) and data.get("symbol", ticker) == ticker
+
+
+def _valid_meta_for_ticker(data: object, ticker: str) -> bool:
+    return (isinstance(data, dict) and bool(data)
+            and data.get("2. Symbol", ticker) == ticker)
+
+
+def _load_missing_pair(
+    ticker: str, api_key: str, paths: dict, response_keys: tuple[str, str],
+    valid, client: _PacedAlphaVantage,
+) -> int:
+    destinations = [paths.get("annual"), paths.get("quarterly")]
+    if all(_saved_json(path, valid) for path in destinations):
+        return 0
+    payload = client.call(ticker, api_key)
+    if not payload:
+        print(f"{ticker} {api_key}: data unavailable")
+        return 0
+    if payload.get("symbol") and payload["symbol"] != ticker:
+        print(f"{ticker} {api_key}: response symbol mismatch")
+        return 0
+    saved = 0
+    for path, response_key in zip(destinations, response_keys):
+        value = payload.get(response_key)
+        if path and valid(value) and not _saved_json(path, valid):
+            _write_json(path, value)
+            saved += 1
+    if not saved:
+        print(f"{ticker} {api_key}: no usable new data")
+    return saved
+
+
+def download_initial_ticker(ticker: str, client: _PacedAlphaVantage) -> int:
+    """Save all available Alpha Vantage source files for one SEC ticker.
+
+    Existing valid files are preserved, so an interrupted run can be resumed.
+    Returns the number of source files created or repaired.
+    """
+    ticker = ticker.strip().upper()
+    if not _VALID_TICKER.fullmatch(ticker):
+        raise ValueError(f"Invalid ticker symbol: {ticker!r}")
+
+    search_path = get_data_root() / "All_Tickers_Searched" / f"{ticker}_ticker_search_info.json"
+    search = load_json_from_file_safe(str(search_path), verbose=False)
+    saved = 0
+    if not _valid_search(search, ticker):
+        search = _exact_search_match(client.call(ticker, "symbol_search"), ticker)
+        if search is None:
+            print(f"{ticker}: no exact Equity or ETF symbol match")
+            return 0
+        _write_json(search_path, search)
+        saved += 1
+
+    from data_ingestion.TickerFileSearch import TickerSearch
+    paths = TickerSearch().ticker_file_pathways(ticker)
+    price_paths = paths.get("ohlcv")
+    if not isinstance(price_paths, dict):
+        raise ValueError(f"{ticker}: no local path; check company_tickers.json")
+
+    # Daily adjusted contains the raw OHLCV, adjusted close, dividends and splits.
+    price_file = price_paths.get("price_hx")
+    meta_file = price_paths.get("meta_data")
+    if not (_saved_json(price_file, _valid_prices)
+            and _saved_json(meta_file, lambda data: _valid_meta_for_ticker(data, ticker))):
+        response = client.call(ticker, "ohlcv")
+        daily = response.get("Time Series (Daily)") if response else None
+        meta = response.get("Meta Data") if response else None
+        if _valid_prices(daily) and _valid_meta_for_ticker(meta, ticker):
+            if not _saved_json(price_file, _valid_prices):
+                _write_json(price_file, daily)
+                saved += 1
+            if not _saved_json(meta_file, lambda data: _valid_meta_for_ticker(data, ticker)):
+                _write_json(meta_file, meta)
+                saved += 1
+        else:
+            print(f"{ticker} ohlcv: daily adjusted data unavailable")
+
+    if search["3. type"] == "ETF":
+        etf_file = paths.get("etf")
+        if etf_file and not _saved_json(etf_file, lambda data: _valid_etf_for_ticker(data, ticker)):
+            profile = client.call(ticker, "etf")
+            if _valid_etf_for_ticker(profile, ticker):
+                _write_json(etf_file, profile)
+                saved += 1
+            else:
+                print(f"{ticker} etf: profile unavailable")
+    else:
+        overview_file = paths.get("company_details")
+        if overview_file and not _saved_json(
+            overview_file, lambda data: _valid_overview(data, ticker)
+        ):
+            overview = client.call(ticker, "company_details")
+            if _valid_overview(overview, ticker):
+                _write_json(overview_file, overview)
+                saved += 1
+            else:
+                print(f"{ticker} company_details: overview unavailable")
+        for key, response_keys in _FINANCIAL_RESPONSE_KEYS.items():
+            financial_paths = paths.get(key)
+            if isinstance(financial_paths, dict):
+                saved += _load_missing_pair(
+                    ticker, key, financial_paths, response_keys, _valid_reports, client,
+                )
+
+    print(f"{ticker}: saved {saved} source file(s)")
+    return saved
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Download initial Alpha Vantage source files for SEC tickers."
+    )
+    parser.add_argument("tickers", nargs="*", help="Tickers to load (default: all in company_tickers.json)")
+    parser.add_argument("--limit", type=int, help="Maximum number of tickers to process")
+    parser.add_argument("--requests-per-minute", type=int, default=5,
+                        help="Alpha Vantage request pace (default: 5)")
+    args = parser.parse_args(argv)
+    if args.limit is not None and args.limit < 1:
+        parser.error("--limit must be positive")
+    if args.requests_per_minute < 1:
+        parser.error("--requests-per-minute must be positive")
+
+    root = get_data_root()
+    registry_path = root / "company_tickers.json"
+    registry = load_json_from_file_safe(str(registry_path), verbose=False)
+    if not isinstance(registry, dict):
+        parser.error(f"SEC ticker registry is missing or invalid: {registry_path}")
+    available = {
+        str(row["ticker"]).strip().upper()
+        for key, row in registry.items()
+        if str(key).isnumeric() and isinstance(row, dict) and row.get("ticker")
+    }
+    requested = [ticker.strip().upper() for ticker in args.tickers] if args.tickers else sorted(available)
+    missing = sorted(set(requested) - available)
+    if missing:
+        parser.error(f"Ticker(s) absent from company_tickers.json: {', '.join(missing)}")
+    tickers = list(dict.fromkeys(requested))[:args.limit]
+    get_alphavantage_api_key()  # Fail before creating directories or making requests.
+    for directory in ("All_Tickers_Searched", "Securities", "ETF_Securities"):
+        (root / directory).mkdir(exist_ok=True)
+
+    client = _PacedAlphaVantage(args.requests_per_minute)
+    saved = 0
+    try:
+        for ticker in tickers:
+            saved += download_initial_ticker(ticker, client)
+    except AlphaVantageRateLimit as exc:
+        print(f"Alpha Vantage limit reached: {exc}. Rerun later to resume.")
+        return 1
+    print(f"Processed {len(tickers)} ticker(s); saved {saved} source file(s).")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

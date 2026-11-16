@@ -323,7 +323,7 @@ def populate_magic_formula_symbols_table() -> pd.DataFrame:
     finally:
         conn.close()
 
-    with open(get_data_root() / 'notebooks' / 'magic_formula_tickers.csv', 'w', newline='') as f:
+    with open(get_data_root() / 'magic_formula_tickers.csv', 'w', newline='') as f:
         writer = csv.writer(f, delimiter=',')
         writer.writerow(eligible_caps['ticker'].tolist())
 

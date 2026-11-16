@@ -365,4 +365,4 @@ def load_etf_ohlcv_data_to_file():
                 print(f"\n{ticker} does not have OHLCV data.\n")
 
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+

@@ -484,6 +484,8 @@ def populate_ohlcv():
 
         sub_dir = f"{ticker}__{title}"
         ohlcv_dir = os.path.join(sec_dir, sub_dir, 'OHLCV')
+        if not os.path.isdir(ohlcv_dir):
+            ohlcv_dir = os.path.join(get_data_root(), 'ETF_Securities', sub_dir, 'OHLCV')
 
         # meta data
         meta_path = os.path.join(ohlcv_dir, f'{ticker}meta.json')
@@ -651,6 +653,8 @@ def update_ohlcv_for_ticker(ticker: str):
     sec_dir = os.path.join(get_data_root(), 'Securities')
     sub_dir = f"{ticker}__{title}"
     ohlcv_dir = os.path.join(sec_dir, sub_dir, 'OHLCV')
+    if not os.path.isdir(ohlcv_dir):
+        ohlcv_dir = os.path.join(get_data_root(), 'ETF_Securities', sub_dir, 'OHLCV')
 
     conn = sqlite3.connect(investment_db_path(), timeout=30)
     conn.execute("PRAGMA foreign_keys=ON")

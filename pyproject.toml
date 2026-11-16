@@ -30,6 +30,7 @@ notebooks = [
 
 [project.scripts]
 investment-analyze = "scripts.analyze_security:main"
+investment-initial-load = "data_ingestion.DataExtraction:main"
 investment-build-magic-formula = "scripts.build_magic_formula_database:main"
 investment-prepare-backtest = "scripts.prepare_backtest_data:main"
 investment-backtest-magic-formula = "scripts.backtest_magic_formula:main"

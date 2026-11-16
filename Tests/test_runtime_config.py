@@ -62,7 +62,7 @@ def test_paths_follow_existing_data_root_layout(monkeypatch, tmp_path):
         tmp_path / "Securities_DB" / "magic_formula_results.db"
     )
     assert default_ticker_backup_path() == (
-        tmp_path / "notebooks" / "magic_formula_ranked_securities.csv"
+        tmp_path / "notebooks" / "magic_formula_tickers.csv"
     )
 
 
