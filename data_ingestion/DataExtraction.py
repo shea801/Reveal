@@ -695,8 +695,10 @@ def _searched_securities(registry_path: str | None = None) -> list[str]:
     """Return a list of successfully loaded searched ticker symbols from "All_Tickers_Searched"."""
     if registry_path is None:
         company_tickers = get_data_root() / "All_Tickers_Searched"
+        company_tickers = str(company_tickers)
     elif registry_path and isinstance(registry_path, str):
         company_tickers = Path(registry_path).resolve()
+        company_tickers = str(company_tickers)
     else:
         print(
             f"Invalid registry path for quick restart: {registry_path}. Starting normally."
@@ -820,8 +822,11 @@ def main(argv: list[str] | None = None) -> int:
 
     client = _PacedAlphaVantage(args.requests_per_minute)
     saved = 0
-    searched_tickers = _searched_securities()
+
     # avoid starting from the beginning every time.
+    searched_tickers_dir = str(root / "All_Tickers_Searched")
+    searched_tickers = _searched_securities(registry_path=searched_tickers_dir)
+
     if searched_tickers:
         tickers = [ticker for ticker in tickers if ticker not in searched_tickers]
 
