@@ -691,6 +691,13 @@ def _load_missing_pair(
     return saved
 
 
+def _searched_securities() -> list[str]:
+    """Return a list of successfully loaded searched ticker symbols from "All_Tickers_Searched"."""
+    data_root = get_data_root() / "All_Tickers_Searched"
+    tickers_saved = [file.name.split('_')[0].strip().upper() for file in os.scandir(data_root) if file.is_file()]
+    return tickers_saved
+
+
 def download_initial_ticker(ticker: str, client: _PacedAlphaVantage) -> int:
     """Save all available Alpha Vantage source files for one SEC ticker.
 
@@ -802,6 +809,10 @@ def main(argv: list[str] | None = None) -> int:
 
     client = _PacedAlphaVantage(args.requests_per_minute)
     saved = 0
+    searched_tickers = _searched_securities()
+    # avoid starting from the beginning every time.
+    tickers = [ticker for ticker in tickers if ticker not in searched_tickers]
+
     try:
         for ticker in tickers:
             saved += download_initial_ticker(ticker, client)
