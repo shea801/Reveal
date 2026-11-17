@@ -691,10 +691,21 @@ def _load_missing_pair(
     return saved
 
 
-def _searched_securities() -> list[str]:
+def _searched_securities(registry_path: str | None = None) -> list[str]:
     """Return a list of successfully loaded searched ticker symbols from "All_Tickers_Searched"."""
-    data_root = get_data_root() / "All_Tickers_Searched"
-    tickers_saved = [file.name.split('_')[0].strip().upper() for file in os.scandir(data_root) if file.is_file()]
+    if registry_path is None:
+        company_tickers = get_data_root() / "All_Tickers_Searched"
+    elif registry_path and isinstance(registry_path, str):
+        company_tickers = Path(registry_path).resolve()
+    else:
+        print(
+            f"Invalid registry path for quick restart: {registry_path}. Starting normally."
+              )
+        return list()
+
+    tickers_saved = [
+        file.name.split('_')[0].strip().upper() for file in os.scandir(company_tickers) if file.is_file()
+    ]
     return tickers_saved
 
 
@@ -811,7 +822,8 @@ def main(argv: list[str] | None = None) -> int:
     saved = 0
     searched_tickers = _searched_securities()
     # avoid starting from the beginning every time.
-    tickers = [ticker for ticker in tickers if ticker not in searched_tickers]
+    if searched_tickers:
+        tickers = [ticker for ticker in tickers if ticker not in searched_tickers]
 
     try:
         for ticker in tickers:
