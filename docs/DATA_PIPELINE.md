@@ -100,11 +100,26 @@ Its responsibilities include:
 
 Ingestion should not contain investment-selection policy.
 
+### Runtime data root
+
+In the current working tree, `runtime_config` selects the data root from
+`REVEAL_DATA_ROOT`, a per-user `data_root` saved by `set_data_root(...)`, or the
+platform's default per-user directory, in that order. The default directory
+is created on first use but does not contain source files or databases until
+they are installed or loaded. Explicit environment and saved roots must be
+absolute, existing directories. This behavior was added after the `v1.0.0`
+tag; the tagged snapshot requires `REVEAL_DATA_ROOT`.
+
+The saved config and default data root are under `Reveal` in Application
+Support on macOS, `%APPDATA%\\reveal` and `%LOCALAPPDATA%\\Reveal\\data` on
+Windows, or the XDG config/data locations under `reveal` on Linux. See the
+README for exact paths and setup commands.
+
 ### First Alpha Vantage download
 
-Set `REVEAL_DATA_ROOT` to an existing absolute data directory containing the
-SEC `company_tickers.json` registry, and set `ALPHAVANTAGE_API_KEY` in the
-environment. From the project root, run:
+Select an existing data directory containing the SEC `company_tickers.json`
+registry, either with `set_data_root(...)` or `REVEAL_DATA_ROOT`, and set
+`ALPHAVANTAGE_API_KEY` in the environment. From the project root, run:
 
 ```bash
 python -m data_ingestion.DataExtraction AAPL SPY
@@ -157,8 +172,8 @@ SEC match metadata, and the rank-only Magic Formula database for those tickers.
 The install command stages and validates both databases, including checksums,
 SQLite integrity, and foreign-key references, before installing either one.
 It refuses to overwrite existing databases and rolls back an incomplete
-installation. Full local databases remain outside Git; the selected starter
-archive is distributed separately as a v1.0.0 release asset.
+installation. Full local databases remain outside Git; a selected starter
+archive is prepared locally for separate v1.0.0 release upload.
 
 ## OHLCV Data
 
@@ -282,7 +297,7 @@ The project provides:
 - documented installation and environment setup;
 - pinned/constrained runtime dependencies;
 - automated tests;
-- documented environment-variable configuration;
+- documented environment, saved-root, and default-root configuration;
 - CLI entry points for operational workflows; and
 - review-only modes for destructive or expensive operations where
   implemented.

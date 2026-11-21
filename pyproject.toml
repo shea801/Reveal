@@ -59,14 +59,14 @@ include = [
     "scripts*",
     "Securities_DB*",
 ]
-exclude = ["Tests*", "notebooks*", "snapshot_Investment_Project*"]
+exclude = ["Tests*", "notebooks*", "snapshot_Reveal*"]
 namespaces = true
 
 [tool.ruff]
 line-length = 79
 extend-exclude = [
     "notebooks",
-    "snapshot_Investment_Project",
+    "snapshot_Reveal",
     "analytics/MovingAverages.py",
     "analytics/VolumeVolatilityPrice.py",
 ]

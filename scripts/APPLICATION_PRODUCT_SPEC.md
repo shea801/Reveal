@@ -9,8 +9,8 @@ Start date: 9/23/2026
 A selected SQLite starter archive can be prepared with
 `investment-database-package export` and installed into a fresh data root
 with `investment-database-package install`. This lets the included securities
-be analyzed before an Alpha Vantage download. A starter archive is distributed
-as a separate v1.0.0 GitHub Release asset; it is not tracked in this repository.
+be analyzed before an Alpha Vantage download. A starter archive is prepared
+locally for separate v1.0.0 GitHub Release upload; it is not tracked in Git.
 The full local databases remain outside Git. See `README.md` for the commands
 and `docs/DATA_PIPELINE.md`
 for the persistence boundary.

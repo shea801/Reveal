@@ -18,9 +18,10 @@ not define a separate landing page.
 
 
 ### CURRENT DEVELOPMENT STAGE
-**v1.0.0 release:** The single-page dashboard is feature-frozen. The
-repository contains CI and a v1.0.0 tag; starter data is a separate release
-asset. Historical peer-cohort distributions and ETF analysis remain post-v1.
+**v1.0.0 baseline:** The single-page dashboard is feature-frozen. The
+repository contains CI and a v1.0.0 tag. The working tree adds data-root
+selection after that tag; starter data is prepared for separate release upload.
+Historical peer-cohort distributions and ETF analysis remain post-v1.
 
 ### IMPLEMENTATION HISTORY
 **2026-10-09**: Reveal v1 dashboard functionality is feature-frozen after

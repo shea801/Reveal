@@ -14,6 +14,10 @@ Status: frozen for the Reveal v1 baseline unless a test-backed change updates
 this file. Dashboard and CLI work should treat this contract as the source of
 truth; CSV export is deferred.
 
+The post-tag data-root selection change affects setup and persistence
+locations, not this application-result contract. Package version remains
+`1.0.0` while that change is validated.
+
 ## Purpose
 
 The Reveal application output represents a repeatable value-investment analysis

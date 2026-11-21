@@ -1,5 +1,6 @@
 Project: Reveal
 Version: v1.0.0
+Working tree: post-tag runtime configuration update; package version remains 1.0.0
 
 # Reveal — Investment Analysis Platform
 
@@ -16,7 +17,7 @@ recommendation.
 
 ## Project Status
 
-**Reveal v1.0.0 is tagged and feature-frozen.**
+**Reveal v1.0.0 is tagged; this working tree contains a post-tag setup change.**
 
 The core ingestion, persistence, data-access, analytics, point-in-time
 metadata, Magic Formula ranking, backtesting, CLI, and automated-test
@@ -30,8 +31,11 @@ company metadata, plus availability-aware annual history for the selected
 security and one requested peer. Security entry accepts a ticker, SEC-indexed
 company name, or CIK, and a separate menu lists the latest persisted Magic
 Formula ranking by rank, ticker, and company name. The repository includes a
-CI workflow and a local `v1.0.0` tag; the starter data is distributed as a
-separate release asset.
+CI workflow and a local `v1.0.0` tag. The data-root change below is being
+applied after that tag while the package version remains `1.0.0`; it is not
+part of the tagged snapshot. A starter ZIP is prepared locally for a separate
+release upload and is present in under the `dist/` directory along with the 
+`*.whl` and `*.tar.gz` files upon downloading from the GitHub repository.
 
 ## Why I Built This
 
@@ -45,9 +49,9 @@ data modeling, external APIs, financial-statement normalization,
 point-in-time historical analysis, automated testing, and application
 design.
 
-The current objective is to turn that infrastructure into a complete,
-usable application while preserving the analytical transparency that
-drove the project from the beginning.
+The current objective is to maintain and extend the usable application while
+preserving the analytical transparency that drove the project from the
+beginning.
 
 ## What Reveal Does
 
@@ -264,7 +268,7 @@ Reveal/
 ├── analytics/                   # Financial calculations and analytical methods
 ├── dashboard/                   # Dash presentation layer and styles
 ├── mvp/                         # Stable application models and service boundary
-├── runtime_config/              # Distributable environment-based path/key interface
+├── runtime_config/              # Data-root selection, database paths, and API key
 ├── Securities_DB/               # SQLite persistence, migrations, and DB helpers
 ├── maintenance/                 # Recurring update and maintenance workflows
 ├── scripts/                     # CLI entry points and operational commands
@@ -290,6 +294,9 @@ discovery.
 **`Securities_DB/`**  
 Owns SQLite persistence, schema evolution, database helpers, Magic
 Formula results, OHLCV storage, and SEC metadata storage.
+If there is no pre-existing data root, the application will create one
+upon download and place the data root in the `reveal-data` directory with
+`Securities_DB/` as a subdirectory (detailed below).
 
 **`data_access/`**  
 Provides database-backed access to financial statements, company
@@ -330,10 +337,27 @@ On Windows PowerShell, run the setup helper with
 `py -3 scripts/setup_project.py`, then activate with
 `.venv\Scripts\Activate.ps1` instead.
 
-Set `REVEAL_DATA_ROOT` to the **existing, absolute directory** that contains
-Reveal's persisted data. The directory must exist. For a development checkout
-whose data remains in its checkout directory, point the variable to that
-directory; no files need to be relocated. For example:
+This working tree selects the data root in this order: `REVEAL_DATA_ROOT` if
+set, the per-user `data_root` saved by `runtime_config.set_data_root(...)`,
+then the platform's default per-user directory. The default directory is
+created on first use; databases and source data are **not** created with it.
+
+| Platform | Default data root | Saved config file |
+| --- | --- | --- |
+| macOS | `~/Library/Application Support/Reveal/data` | `~/Library/Application Support/Reveal/config.toml` |
+| Windows | `%LOCALAPPDATA%\Reveal\data` | `%APPDATA%\reveal\config.toml` |
+| Linux | `~/.local/share/reveal` (or `$XDG_DATA_HOME/reveal`) | `~/.config/reveal/config.toml` (or `$XDG_CONFIG_HOME/reveal/config.toml`) |
+
+To keep using an existing populated data directory, save it once:
+
+``` bash
+python -c 'from runtime_config import set_data_root; set_data_root("/absolute/path/to/existing/data-root")'
+```
+
+Alternatively, set `REVEAL_DATA_ROOT` to an existing absolute directory for
+the current shell or process. It overrides the saved choice. For a checkout
+whose data remains in its checkout directory, point either setting there; no
+files need to be relocated. For example:
 
 ``` bash
 export REVEAL_DATA_ROOT="/absolute/path/to/existing/data-root"
@@ -344,8 +368,11 @@ existing data root (for example, a development checkout that already contains
 `Securities_DB/investment.db`). It does not mean any working directory will do.
 
 PowerShell: `$env:REVEAL_DATA_ROOT = 'C:\path\to\existing\data-root'`.
-Keep this setting in your local shell or environment configuration, not in a
-tracked project file. Under that root, Reveal expects the existing layout:
+Explicit environment and saved roots must be absolute, existing directories.
+To create and save a new empty root, call
+`set_data_root("/absolute/path/to/new-root", create=True)` before installing
+or loading data. Keep runtime settings out of tracked project files. Under
+the selected root, Reveal expects the existing layout:
 
 ``` text
 Securities_DB/investment.db
@@ -358,13 +385,13 @@ notebooks/magic_formula_tickers.csv
 notebooks/magic_formula_ranked_securities.csv
 ```
 
-Existing root-level CSV files such as `all_ticker_symbols.csv`,
-`valid_etf_tickers.csv`, and `magic_formula_tickers.csv` retain their current
-locations. Not every file is needed for dashboard startup: the investment
-database is needed for analysis, and the Magic Formula database supplies the
-ranked menu when present. Data ingestion and maintenance use the JSON and CSV
-paths. `ALPHAVANTAGE_API_KEY` is required only for live Alpha Vantage requests
-made by ingestion and refresh jobs. Set it in the local environment before
+As there is no full database to download, the dashboard does not need it to
+run the dashboard. A downloadable `*.zip` file is available upon application 
+download to supply the information needed by the dashboard. When created, the 
+investment database is used for analysis, and the Magic Formula database supplies 
+the ranked menu when current data is populated. Data ingestion and maintenance use 
+the JSON and CSV paths. `ALPHAVANTAGE_API_KEY` is required only for live Alpha Vantage 
+requests made by ingestion and refresh jobs. Set it in the local environment before
 those operations; it is not needed to import modules, run unit tests, or start
 the dashboard. Existing ignored `configuration.py` files are no longer read
 by the application.
@@ -374,8 +401,8 @@ by the application.
 Reveal's full investment database is several GB and is intentionally
 excluded from the public repository and Python package.
 
-A smaller demonstration dataset is distributed separately as a ZIP
-asset attached to the GitHub v1.0.0 Release; it is not tracked in Git.
+A smaller demonstration dataset is prepared as a ZIP for separate upload to
+the GitHub v1.0.0 Release. The archive is not tracked in Git.
 
 The starter archive contains historical financial statements, market
 prices, SEC filing metadata, and calculated ranking results for
@@ -385,23 +412,26 @@ AAPL, AMZN, CAT, GOOGL, HD, JNJ, JPM, KO, MSFT, NEE, PG, and XOM.
 
 #### Install the starter database
 
-Download `Reveal_starter_v1.0.0.zip` from the v1.0.0 GitHub Release.
+Use a local copy of `Reveal_starter_v1.0.0.zip`, or download it from the
+v1.0.0 GitHub Release after it is attached there. It is found in the `dist/`
+director under the chosen/selected 'Reveal' directory.
 
-Create an empty directory for Reveal's data:
+Create and save an empty directory for Reveal's data:
 
 ```bash
-mkdir -p "$HOME/reveal-data"
+python -c 'from runtime_config import set_data_root; set_data_root("~/reveal-data", create=True)'
 ```
 
-Install the downloaded archive:
+Install the archive:
 
 ```bash
 investment-database-package install \
-  --bundle "$HOME/Downloads/Reveal_starter_v1.0.0.zip" \
-  --data-root "$HOME/reveal-data"
+  --bundle "$HOME/Downloads/Reveal_starter_v1.0.0.zip"
 ```
 
-Adjust the archive path if your browser saved the ZIP elsewhere.
+Adjust the archive path to the local copy you obtained. If `--data-root` is
+passed to the installer, it applies only to that command; save the same root
+with `set_data_root(...)` or set `REVEAL_DATA_ROOT` for later dashboard runs.
 
 The installer creates the following directory structure:
 
@@ -410,12 +440,6 @@ reveal-data/
 └── Securities_DB/
     ├── investment.db
     └── magic_formula_results.db
-```
-
-Configure Reveal to use the installed databases:
-
-```bash
-export REVEAL_DATA_ROOT="$HOME/reveal-data"
 ```
 
 Launch the dashboard:
@@ -502,7 +526,7 @@ Reveal currently uses:
 
 Large local datasets, API credentials, full database files, and downloaded
 source archives are not committed to the public repository. The size-limited
-starter archive is distributed separately as a release asset, not in Git.
+starter archive is prepared for a separate release upload, not in Git.
 
 ## Technical Documentation
 
@@ -524,11 +548,13 @@ Product behavior and analytical policy are documented in
 
 ## Release Status
 
-The v1 feature set is frozen. Package metadata and the local Git tag are
-`1.0.0`. CI installs the package, runs the sanitized tests and Ruff, builds a
-distribution, and checks wheel imports. The public starter archive is a
-separate GitHub Release asset. Demo screenshots or recordings are not included
-in this repository.
+The v1 feature set is frozen. Package metadata remains `1.0.0`, and the local
+`v1.0.0` Git tag identifies the earlier release snapshot. This working tree
+adds the new data-root behavior after that tag; a future `v1.0.1` version bump
+has not been made. CI installs the package, runs the sanitized tests and Ruff,
+builds a distribution, and checks wheel imports. The starter ZIP is prepared
+for separate upload as a GitHub Release asset. Demo screenshots or recordings
+are not included in this repository.
 
 ## Post-v1 Ideas
 
@@ -567,12 +593,19 @@ These items are intentionally outside the v1.0 critical path.
 ## Development Workflow and AI Assistance
 
 This project is developed with support from AI coding assistants,
-including ChatGPT, Codex, and earlier Claude-assisted work.
+including ChatGPT, Codex, and Claude. I wrote the original code to this project.
+I had a model, a file system, and a small database to support development. AI acted 
+as a project manager to help keep the development process on track, as a programmer
+and code reviewer, and as a tutor to help better learn and understand the 
+engineering and development process.
 
 AI tools are used for implementation support, refactoring, testing,
 documentation, and technical review. Architecture, analytical
 methodology, requirements, integration decisions, and final validation
-remain owner-directed.
+remain owner-directed. AI has been a tremendous asset to the development
+process. It has also shown the need for detailed review of it's work, which 
+has contributed as much to learning more about software development than 
+trying to write more code.
 
 ## Author
 

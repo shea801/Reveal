@@ -4,6 +4,10 @@
 
 Run the recurring update job from the project root:
 
+The command reads and writes under the data root selected by
+`runtime_config` (`REVEAL_DATA_ROOT`, a saved per-user root, or the platform
+default). Running from the project root alone does not select that data root.
+
 ```bash
 python3 scripts/update_securities.py
 ```

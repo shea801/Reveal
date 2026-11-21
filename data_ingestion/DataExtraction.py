@@ -416,28 +416,29 @@ class DataExtraction:
         today = dt.date.today()
 
         # ── 1. Weekly OHLCV update ───────────────────────────────────────
+        latest = None
         try:
             from data_access.OHLCVPriceData import OHLCVPriceData
 
             ohlcv_db = OHLCVPriceData(self.ticker)
             latest = ohlcv_db.latest_price()
-            date = latest.get('date','')
-            latest_price = latest.get('close', None)
         except Exception:
             print(f"No latest price data found for {self.ticker}")
 
-        if latest_price and date and date != '':
-            last_price_date = dt.datetime.fromisoformat(str(latest_price['date'])[:10])
-            ohlcv_age = (today - last_price_date).days
-        else:
-            ohlcv_age = 999  # no data, force download
+        latest_price_date = latest.get('date') if isinstance(latest, dict) else None
+        ohlcv_age = 999  # missing or invalid date, force download
+        if latest_price_date:
+            try:
+                ohlcv_age = (today - dt.date.fromisoformat(str(latest_price_date)[:10])).days
+            except ValueError:
+                pass
 
         if ohlcv_age >= 7:
             print(f"OHLCV for {self.ticker} is {ohlcv_age} days old. Downloading...")
             self.price_history_api_call_to_file()
             update_ohlcv_for_ticker(self.ticker)
         else:
-            print(f"OHLCV for {self.ticker} is up to date (last price: {latest_price.get('date', 'N/A')})")
+            print(f"OHLCV for {self.ticker} is up to date (last price: {latest_price_date})")
 
         # ── 2. Financial statement updates (stocks only, not ETFs) ────────
         details = cd.get_details()
@@ -459,16 +460,16 @@ class DataExtraction:
         need_quarterly = False
 
         if latest_q_date_str:
-            latest_q_date = dt.datetime.fromisoformat(latest_q_date_str)
+            latest_q_date = dt.date.fromisoformat(latest_q_date_str)
             # next quarter end is ~3 months after the last one
             next_q_end = latest_q_date + dt.timedelta(days=90)
             # check 30 days after expected quarter end (SEC allows up to 45)
             check_date = next_q_end + dt.timedelta(days=30)
             # check the last time the file was modified
             cd_last_qdate = cd.get_latest_quarter()
-            if cd_last_qdate != latest_q_date_str:
+            if cd_last_qdate and cd_last_qdate != latest_q_date_str:
                 need_quarterly = True
-                cd_last_qdt = dt.datetime.fromisoformat(cd_last_qdate)
+                cd_last_qdt = dt.date.fromisoformat(cd_last_qdate)
                 if today >= cd_last_qdt + dt.timedelta(days=91):
                     print(f"Quarterly reports for {self.ticker}: last quarter ended {latest_q_date_str}")
             if today >= check_date:
@@ -691,26 +692,6 @@ def _load_missing_pair(
     return saved
 
 
-def _searched_securities(registry_path: str | None = None) -> list[str]:
-    """Return a list of successfully loaded searched ticker symbols from "All_Tickers_Searched"."""
-    if registry_path is None:
-        company_tickers = get_data_root() / "All_Tickers_Searched"
-        company_tickers = str(company_tickers)
-    elif registry_path and isinstance(registry_path, str):
-        company_tickers = Path(registry_path).resolve()
-        company_tickers = str(company_tickers)
-    else:
-        print(
-            f"Invalid registry path for quick restart: {registry_path}. Starting normally."
-              )
-        return list()
-
-    tickers_saved = [
-        file.name.split('_')[0].strip().upper() for file in os.scandir(company_tickers) if file.is_file()
-    ]
-    return tickers_saved
-
-
 def download_initial_ticker(ticker: str, client: _PacedAlphaVantage) -> int:
     """Save all available Alpha Vantage source files for one SEC ticker.
 
@@ -822,13 +803,6 @@ def main(argv: list[str] | None = None) -> int:
 
     client = _PacedAlphaVantage(args.requests_per_minute)
     saved = 0
-
-    # avoid starting from the beginning every time.
-    searched_tickers_dir = str(root / "All_Tickers_Searched")
-    searched_tickers = _searched_securities(registry_path=searched_tickers_dir)
-
-    if searched_tickers:
-        tickers = [ticker for ticker in tickers if ticker not in searched_tickers]
 
     try:
         for ticker in tickers:

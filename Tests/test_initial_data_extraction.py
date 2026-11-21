@@ -1,8 +1,12 @@
 import json
 import sqlite3
+import datetime as dt
+
+import pytest
 
 from data_ingestion.DataExtraction import (
-    AlphaVantageRateLimit, _PacedAlphaVantage, download_initial_ticker, main,
+    AlphaVantageRateLimit, DataExtraction, _PacedAlphaVantage,
+    download_initial_ticker, main,
 )
 
 
@@ -62,6 +66,25 @@ def test_initial_equity_download_creates_importer_layout_and_resumes(monkeypatch
             assert (base / "Financial_Statements" / folder / f"{stem}{period}{suffix}.json").is_file()
     assert download_initial_ticker("AAA", client) == 0
     assert len(client.calls) == 7
+
+
+def test_cli_resumes_ticker_with_search_file_but_missing_prices(monkeypatch, tmp_path):
+    monkeypatch.setenv("REVEAL_DATA_ROOT", str(tmp_path))
+    _registry(tmp_path, "AAA", "Alpha Inc")
+    search_dir = tmp_path / "All_Tickers_Searched"
+    search_dir.mkdir()
+    (search_dir / "AAA_ticker_search_info.json").write_text(json.dumps({
+        "1. symbol": "AAA", "3. type": "Equity",
+    }))
+    client = FakeClient({
+        "ohlcv": {"Meta Data": {"2. Symbol": "AAA"}, "Time Series (Daily)": _daily_prices()},
+    })
+    monkeypatch.setattr("data_ingestion.DataExtraction.get_alphavantage_api_key", lambda: "test")
+    monkeypatch.setattr("data_ingestion.DataExtraction._PacedAlphaVantage", lambda _: client)
+
+    assert main(["AAA"]) == 0
+    assert ("AAA", "ohlcv") in client.calls
+    assert (tmp_path / "Securities" / "AAA__Alpha Inc" / "OHLCV" / "AAAohlcv.json").is_file()
 
 
 def test_initial_etf_download_and_unavailable_data(monkeypatch, tmp_path):
@@ -140,3 +163,79 @@ def test_provider_rate_limit_stops_initial_download(monkeypatch, tmp_path):
     else:
         raise AssertionError("Expected the API limit to stop the download")
     assert not (tmp_path / "All_Tickers_Searched" / "AAA_ticker_search_info.json").exists()
+
+
+@pytest.mark.parametrize("age_days,refresh", [(2, False), (8, True), (None, True)])
+def test_security_update_uses_latest_price_date(monkeypatch, age_days, refresh):
+    latest = None if age_days is None else {
+        "date": (dt.date.today() - dt.timedelta(days=age_days)).isoformat(),
+        "close": 10.0,
+    }
+    calls = []
+
+    class FakePrices:
+        def __init__(self, ticker):
+            assert ticker == "AAA"
+
+        def latest_price(self):
+            return latest
+
+    class FakeDetails:
+        def __init__(self, ticker):
+            assert ticker == "AAA"
+
+        def get_details(self):
+            return {}
+
+    monkeypatch.setattr("data_access.OHLCVPriceData.OHLCVPriceData", FakePrices)
+    monkeypatch.setattr("data_ingestion.DataExtraction.CD", FakeDetails)
+    monkeypatch.setattr(
+        "Securities_DB.create_database.update_ohlcv_for_ticker",
+        lambda ticker: calls.append(("database", ticker)),
+    )
+    extractor = DataExtraction("AAA")
+    monkeypatch.setattr(
+        extractor, "price_history_api_call_to_file",
+        lambda: calls.append(("download", "AAA")),
+    )
+
+    extractor.update_securities_data()
+    assert calls == ([('download', 'AAA'), ('database', 'AAA')] if refresh else [])
+
+
+def test_security_update_compares_quarterly_dates_without_datetime_error(monkeypatch):
+    class FakePrices:
+        def __init__(self, ticker):
+            pass
+
+        def latest_price(self):
+            return {"date": dt.date.today().isoformat(), "close": 10.0}
+
+    class FakeDetails:
+        def __init__(self, ticker):
+            pass
+
+        def get_details(self):
+            return {"AssetType": "Common Stock", "FiscalYearEnd": "December"}
+
+        def get_latest_quarterly_fiscal_date(self):
+            return (dt.date.today() - dt.timedelta(days=200)).isoformat()
+
+        def get_latest_quarter(self):
+            return self.get_latest_quarterly_fiscal_date()
+
+        def get_latest_annual_fiscal_date(self):
+            return dt.date.today().isoformat()
+
+    updated = []
+    monkeypatch.setattr("data_access.OHLCVPriceData.OHLCVPriceData", FakePrices)
+    monkeypatch.setattr("data_ingestion.DataExtraction.CD", FakeDetails)
+    monkeypatch.setattr(
+        "Securities_DB.create_database.update_market_capitalization_for_ticker",
+        updated.append,
+    )
+    extractor = DataExtraction("AAA")
+    monkeypatch.setattr(extractor, "_check_financial_files_recently_modified", lambda **_: True)
+
+    extractor.update_securities_data()
+    assert updated == ["AAA"]

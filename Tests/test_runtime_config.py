@@ -7,12 +7,15 @@ import subprocess
 import sys
 
 import pytest
+import runtime_config
 
 from runtime_config import (
     get_alphavantage_api_key,
     get_data_root,
     investment_db_path,
     magic_formula_db_path,
+    resolve_data_root,
+    set_data_root,
 )
 from Securities_DB.db_connection import get_connection
 from Securities_DB.create_database import create_database
@@ -24,6 +27,27 @@ from maintenance.adjusted_price_backfill import (
 from dashboard.app import create_app
 from data_access.file_parsing import tickers_titles
 from data_ingestion.TickerFileSearch import TickerSearch
+
+
+@pytest.mark.parametrize(
+    ("platform", "config_suffix", "data_suffix"),
+    [
+        ("darwin", "Library/Application Support/Reveal/config.toml",
+         "Library/Application Support/Reveal/data"),
+        ("win32", "AppData/Roaming/reveal/config.toml",
+         "AppData/Local/Reveal/data"),
+        ("linux", ".config/reveal/config.toml",
+         ".local/share/reveal"),
+    ],
+)
+def test_standard_user_locations(monkeypatch, tmp_path, platform, config_suffix, data_suffix):
+    monkeypatch.setattr(runtime_config.sys, "platform", platform)
+    monkeypatch.setattr(runtime_config, "_home_directory", lambda: tmp_path)
+    for key in ("APPDATA", "LOCALAPPDATA", "XDG_CONFIG_HOME", "XDG_DATA_HOME"):
+        monkeypatch.delenv(key, raising=False)
+
+    assert runtime_config.config_file() == tmp_path / config_suffix
+    assert runtime_config.default_data_root() == tmp_path / data_suffix
 
 
 def test_affected_modules_import_without_configuration_or_environment():
@@ -66,10 +90,86 @@ def test_paths_follow_existing_data_root_layout(monkeypatch, tmp_path):
     )
 
 
-def test_missing_data_root_is_reported_only_when_needed(monkeypatch):
+def test_default_data_root_is_created_on_first_use(monkeypatch, tmp_path):
     monkeypatch.delenv("REVEAL_DATA_ROOT", raising=False)
-    with pytest.raises(RuntimeError, match="REVEAL_DATA_ROOT"):
+    config_path = tmp_path / "config" / "config.toml"
+    default_root = tmp_path / "default" / "data"
+    monkeypatch.setattr(runtime_config, "config_file", lambda: config_path)
+    monkeypatch.setattr(runtime_config, "default_data_root", lambda: default_root)
+
+    assert resolve_data_root() == (default_root, "default")
+    assert not default_root.exists()
+    assert get_data_root() == default_root
+    assert default_root.is_dir()
+    with pytest.raises(FileNotFoundError, match="database is missing"):
         get_connection()
+
+
+def test_saved_root_is_used_without_environment_variable(monkeypatch, tmp_path):
+    monkeypatch.delenv("REVEAL_DATA_ROOT", raising=False)
+    config_path = tmp_path / "config" / "config.toml"
+    chosen_root = tmp_path / "chosen"
+    chosen_root.mkdir()
+    monkeypatch.setattr(runtime_config, "config_file", lambda: config_path)
+
+    assert set_data_root(chosen_root) == chosen_root
+    assert config_path.is_file()
+    assert resolve_data_root() == (chosen_root, "config")
+    assert get_data_root() == chosen_root
+    assert investment_db_path() == chosen_root / "Securities_DB" / "investment.db"
+
+
+def test_environment_root_overrides_saved_root(monkeypatch, tmp_path):
+    saved_root = tmp_path / "saved"
+    saved_root.mkdir()
+    env_root = tmp_path / "environment"
+    env_root.mkdir()
+    monkeypatch.setattr(runtime_config, "config_file", lambda: tmp_path / "config.toml")
+    set_data_root(saved_root)
+    monkeypatch.setenv("REVEAL_DATA_ROOT", str(env_root))
+
+    assert resolve_data_root() == (env_root, "env")
+    assert get_data_root() == env_root
+
+
+@pytest.mark.parametrize("source", ["env", "config"])
+def test_explicit_root_must_exist_and_be_absolute(monkeypatch, tmp_path, source):
+    config_path = tmp_path / "config.toml"
+    monkeypatch.setattr(runtime_config, "config_file", lambda: config_path)
+    monkeypatch.delenv("REVEAL_DATA_ROOT", raising=False)
+
+    for value in (str(tmp_path / "missing"), "relative/path"):
+        if source == "env":
+            monkeypatch.setenv("REVEAL_DATA_ROOT", value)
+        else:
+            config_path.write_text(f"data_root = {json.dumps(value)}\n")
+        with pytest.raises(RuntimeError, match=f"from {source} setting"):
+            get_data_root()
+
+
+def test_set_data_root_requires_existing_directory_unless_create_is_true(
+    monkeypatch, tmp_path,
+):
+    monkeypatch.setattr(runtime_config, "config_file", lambda: tmp_path / "config.toml")
+    chosen_root = tmp_path / "new" / "data"
+
+    with pytest.raises(RuntimeError, match="does not exist"):
+        set_data_root(chosen_root)
+    assert not chosen_root.exists()
+    assert set_data_root(chosen_root, create=True) == chosen_root
+    assert chosen_root.is_dir()
+
+
+def test_invalid_saved_config_falls_back_to_default(monkeypatch, tmp_path):
+    monkeypatch.delenv("REVEAL_DATA_ROOT", raising=False)
+    config_path = tmp_path / "config.toml"
+    config_path.write_text("data_root = [invalid\n")
+    default_root = tmp_path / "default"
+    monkeypatch.setattr(runtime_config, "config_file", lambda: config_path)
+    monkeypatch.setattr(runtime_config, "default_data_root", lambda: default_root)
+
+    assert resolve_data_root() == (default_root, "default")
+    assert get_data_root() == default_root
 
 
 def test_dashboard_starts_without_api_key_or_data_root(monkeypatch):
